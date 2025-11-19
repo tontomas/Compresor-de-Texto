@@ -2,122 +2,176 @@ from Logica import huffman_compressor as hf
 from Logica import sparse_matrix_analyzer as sa
 import os
 
+# --- Funciones Auxiliares ---
+
 def crear_archivos_ejemplo_si_no_existen():
-    """
-    Crea archivos de texto de prueba para que el programa funcione
-    inmediatamente sin que el usuario tenga que crearlos manualmente.
-    """
-    # Archivo para Huffman
+    """Crea el archivo 'texto_huffman.txt' si no existe."""
     if not os.path.exists("texto_huffman.txt"):
         with open("texto_huffman.txt", "w", encoding="utf-8") as f:
-            f.write("hola esta es una prueba de compresion de texto desde un archivo txt con huffman")
-        print("--> Se creó 'texto_huffman.txt' de prueba.")
-
-    # Archivos para Matriz Dispersa
-    docs = {
-        "doc1.txt": "el perro come hueso en el jardin",
-        "doc2.txt": "el gato come pescado en la cocina",
-        "doc3.txt": "el perro y el gato son amigos en la casa",
-        "doc4.txt": "el hueso es del perro y el pescado del gato"
-    }
-    
-    for nombre, contenido in docs.items():
-        if not os.path.exists(nombre):
-            with open(nombre, "w", encoding="utf-8") as f:
-                f.write(contenido)
-            print(f"--> Se creó '{nombre}' de prueba.")
+            f.write("Esta es una inicializacion, por favor pegue aqui su texto largo de 20 paginas.")
+        print("--> Se creó 'texto_huffman.txt'. POR FAVOR, PEGAR SU TEXTO LARGO DENTRO.")
 
 def leer_archivo(ruta):
-    """
-    Lee el contenido de un archivo de texto.
-    Maneja errores si el archivo no existe.
-    """
+    """Lee el contenido de un archivo de texto."""
     try:
+        # Se lee sin strip() para mantener espacios en blanco/saltos de línea
         with open(ruta, 'r', encoding='utf-8') as archivo:
-            contenido = archivo.read().strip() # .strip() quita espacios al inicio/final
+            contenido = archivo.read()
             return contenido
     except FileNotFoundError:
-        print(f"Error: No se encontró el archivo '{ruta}'.")
         return None
     except Exception as e:
         print(f"Error leyendo '{ruta}': {e}")
         return None
 
+def escribir_archivo(ruta, contenido):
+    """Escribe el contenido en un archivo de texto."""
+    try:
+        with open(ruta, 'w', encoding='utf-8') as archivo:
+            archivo.write(contenido)
+        # Nota: Cambié el símbolo 'ÉXITO' por 'Exito' para evitar el mismo error de codificación si Python intenta imprimirlo
+        print(f"--> Exito: Texto descomprimido guardado en '{ruta}'") 
+    except Exception as e:
+        print(f"Error escribiendo '{ruta}': {e}")
+
+def obtener_tamanio_archivo(ruta):
+    """Obtiene el tamaño de un archivo en bytes."""
+    try:
+        return os.path.getsize(ruta)
+    except FileNotFoundError:
+        return 0
+
+# --- Función de Comparación de Contenido (Matriz Dispersa) ---
+
+def comparar_frecuencias_semanticas(texto_original, texto_descomprimido, top_n=25):
+    """
+    Ejecuta el análisis de Matriz Dispersa para verificar la integridad semántica.
+    """
+    print("\n" + "=" * 80)
+    # Nota: También reemplacé el carácter 'É' para prevenir problemas si no es solo el símbolo el problema
+    print(f"VERIFICACION SEMANTICA DE CONTENIDO ({top_n} PALABRAS MAS FRECUENTES)") 
+    print(f"(DEMOSTRACION DE LA ESTRUCTURA MATRIZ DISPERSA)")
+    print("=" * 80)
+    
+    # Análisis del Archivo Original
+    analizador_original = sa.AnalizadorTextoHuffman()
+    matriz_original_dok = analizador_original.construir_matriz_dispersa_dok([texto_original])
+    top_original = analizador_original.obtener_top_frecuencias(matriz_original_dok, top_n)
+
+    # Análisis del Archivo Descomprimido
+    analizador_descomprimido = sa.AnalizadorTextoHuffman()
+    matriz_descomp_dok = analizador_descomprimido.construir_matriz_dispersa_dok([texto_descomprimido])
+    top_descomprimido = analizador_descomprimido.obtener_top_frecuencias(matriz_descomp_dok, top_n)
+    
+    # --------------------------------------------------------
+    # Muestra de la Comparación (Top-25)
+    # --------------------------------------------------------
+    
+    print(f"{'No.':<4} | {'ORIGINAL (texto_huffman.txt)':<35} | {'DESCOMPRIMIDO (texto_descomp.txt)':<35} | {'COINCIDE':<8}")
+    print("-" * 80)
+    
+    coincidencias = 0
+    
+    # Iterar sobre las 25 posiciones
+    for i in range(top_n):
+        
+        # Obtener datos del original
+        palabra_orig, freq_orig = top_original[i] if i < len(top_original) else ('-', 0)
+        
+        # Obtener datos del descomprimido
+        palabra_descomp, freq_descomp = top_descomprimido[i] if i < len(top_descomprimido) else ('-', 0)
+        
+        # Verificación clave
+        coincide_palabra = (palabra_orig == palabra_descomp) and (freq_orig == freq_descomp)
+        
+        # *** CORRECCIÓN DEL ERROR AQUÍ ***
+        simbolo = "OK" if coincide_palabra else "FALLA"
+        
+        if coincide_palabra:
+            coincidencias += 1
+            
+        linea_original = f"'{palabra_orig}': {freq_orig}"
+        linea_descomp = f"'{palabra_descomp}': {freq_descomp}"
+
+        print(f"{i + 1:<4} | {linea_original:<35} | {linea_descomp:<35} | {simbolo:<8}")
+
+
+    # Conclusión semántica
+    if coincidencias == top_n:
+        print("\nCONCLUSION SEMANTICA: La distribucion de frecuencia de palabras es IDENTICA en el Top-25. ¡Integridad Perfecta!")
+    else:
+        print(f"\nCONCLUSION SEMANTICA: Se encontraron {top_n - coincidencias} diferencias en el Top-25.")
+
+
+# --- Función Principal de la Demo ---
+
 def demo_huffman():
-    print("\n" + "=" * 40)
-    print("DEMO DE COMPRESIÓN HUFFMAN (Desde Archivo)")
-    print("=" * 40)
+    print("\n" + "=" * 50)
+    print("DEMO DE COMPRESION HUFFMAN (Ciclo Completo: TXT -> BIN -> TXT)")
+    print("=" * 50)
     
-    nombre_archivo = "texto_huffman.txt"
-    print(f"Leyendo archivo: {nombre_archivo}...")
+    nombre_archivo_original = "texto_huffman.txt"
+    nombre_archivo_comprimido = "texto_comp.bin"
+    nombre_archivo_descomprimido = "texto_descomp.txt"
     
-    texto_original = leer_archivo(nombre_archivo)
+    # 1. Lectura del Original
+    texto_original = leer_archivo(nombre_archivo_original)
+    # También debemos limpiar el texto original de posibles caracteres no ASCII en la muestra inicial si usamos la codificación 'charmap'
+    texto_original_muestra = texto_original[:50].strip().encode('ascii', 'ignore').decode('ascii') if texto_original else ''
     
     if not texto_original:
+        print("El archivo original está vacío o no existe.")
+        return
+    
+    print(f"Texto Original (Muestra): '{texto_original_muestra}...'")
+    
+    # 2. Compresión y Guardado Binario
+    datos_binarios, padding, mapa_codigos = hf.comprimir(texto_original)
+    if not datos_binarios:
+        print("Error: El texto no pudo ser comprimido.")
         return
 
-    print(f"Texto Original: '{texto_original}'")
-    print(f"Longitud Original: {len(texto_original) * 8} bits (asumiendo 8 bits/caracter)")
+    print(f"\nGuardando datos comprimidos en '{nombre_archivo_comprimido}' (Modo Binario)...")
+    if not hf.guardar_binario(datos_binarios, nombre_archivo_comprimido, padding, mapa_codigos):
+        return
+
+    # 3. Lectura del Binario y Descompresión
+    print(f"\nCargando binario y descomprimiendo a '{nombre_archivo_descomprimido}'...")
     
-    texto_comprimido, arbol, mapa_codigos = hf.comprimir(texto_original)
+    texto_comprimido_cargado_bits, mapa_codigos_cargado = hf.cargar_binario(nombre_archivo_comprimido)
     
-    # Mostramos solo los primeros 10 códigos para no saturar si es muy largo
-    print("\nMapa de Códigos (Muestra de los primeros):")
-    i = 0
-    for char, code in sorted(mapa_codigos.items()):
-        print(f"  '{char}': {code}")
-        i += 1
-        if i >= 10:
-            print("  ... (más caracteres ocultos)")
-            break
+    if not texto_comprimido_cargado_bits:
+        return
         
-    print(f"\nTexto Comprimido: '{texto_comprimido}'")
-    print(f"Longitud Comprimida: {len(texto_comprimido)} bits")
+    texto_descomprimido = hf.descomprimir_mapa(texto_comprimido_cargado_bits, mapa_codigos_cargado)
     
-    if len(texto_original) > 0:
-        tasa_compresion = (len(texto_comprimido) / (len(texto_original) * 8)) * 100
-        print(f"Tasa de Compresión: {tasa_compresion:.2f}%")
+    # 4. Guardado del Archivo Descomprimido
+    escribir_archivo(nombre_archivo_descomprimido, texto_descomprimido)
     
-    texto_descomprimido = hf.descomprimir(texto_comprimido, arbol)
+    # 5. Verificación de Archivos y Tamaños
+    tamanio_original_bytes = obtener_tamanio_archivo(nombre_archivo_original)
+    tamanio_comprimido_bytes = obtener_tamanio_archivo(nombre_archivo_comprimido)
+    tamanio_descomprimido_bytes = obtener_tamanio_archivo(nombre_archivo_descomprimido)
     
-    # Verificación
-    if texto_original == texto_descomprimido:
-        print("\nVerificación: ¡ÉXITO! El texto descomprimido es idéntico al original.")
+    print("\n" + "*" * 20 + " RESULTADOS DE TAMAÑO " + "*" * 20)
+    print(f"  Tamaño Original ({nombre_archivo_original}): {tamanio_original_bytes} bytes")
+    print(f"  Tamaño Comprimido ({nombre_archivo_comprimido}): {tamanio_comprimido_bytes} bytes")
+    print(f"  Tamaño Descomprimido ({nombre_archivo_descomprimido}): {tamanio_descomprimido_bytes} bytes")
+    
+    if tamanio_original_bytes > 0 and tamanio_comprimido_bytes > 0:
+        tasa_reduccion = (1 - (tamanio_comprimido_bytes / tamanio_original_bytes)) * 100
+        print(f"  Tasa de Reduccion de Espacio: {tasa_reduccion:.2f}%")
+
+    if texto_original.strip() == texto_descomprimido.strip():
+        print("\nVerificacion de Contenido: ¡EXITO! El contenido original coincide con el descomprimido.")
     else:
-        print("\nVerificación: FALLÓ. Los textos no coinciden.")
+        print("\nVerificacion de Contenido: FALLO. Los contenidos de archivo no coinciden.")
+        
+    # 6. INTEGRACIÓN: Ejecución del Análisis de Matriz Dispersa
+    comparar_frecuencias_semanticas(texto_original, texto_descomprimido, top_n=100)
 
-def demo_matriz_dispersa():
-    print("\n" + "=" * 40)
-    print("DEMO MATRIZ DISPERSA (Múltiples Archivos)")
-    print("=" * 40)
-    
-    nombres_archivos = ["doc1.txt", "doc2.txt", "doc3.txt", "doc4.txt"]
-    documentos = []
-    
-    print("Leyendo documentos...")
-    for nombre in nombres_archivos:
-        contenido = leer_archivo(nombre)
-        if contenido:
-            documentos.append(contenido)
-            print(f"  - {nombre}: Leído ({len(contenido)} caracteres)")
-        else:
-            print(f"  - {nombre}: Saltado (Error)")
-    
-    if not documentos:
-        print("No hay documentos válidos para procesar.")
-        return
-
-    analizador = sa.AnalizadorTextos()
-    matriz_dok = analizador.construir_matriz_dispersa_dok(documentos)
-    
-    # Imprimir la matriz
-    analizador.imprimir_matriz(matriz_dok, documentos)
 
 # --- Ejecución Principal ---
 if __name__ == "__main__":
-    # 1. Crear archivos dummy para que el usuario pueda probarlo ya mismo
     crear_archivos_ejemplo_si_no_existen()
-    
-    # 2. Ejecutar demos
     demo_huffman()
-    demo_matriz_dispersa()

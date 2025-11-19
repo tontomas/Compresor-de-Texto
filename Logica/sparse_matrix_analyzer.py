@@ -1,90 +1,59 @@
 from collections import defaultdict
 
-class AnalizadorTextos:
+class AnalizadorTextoHuffman:
     
     def __init__(self):
-        self.vocabulario = {} # Diccionario para mapear palabra -> indice
-        self.palabras = [] # Lista para mapear indice -> palabra
+        self.vocabulario = {} 
+        self.palabras = []    
         self.siguiente_indice = 0
     
-    def _construir_vocabulario(self, documentos):
-        """
-        Crea un vocabulario único a partir de todos los documentos.
-        Esto define las "columnas" de nuestra matriz.
-        Usa un diccionario (self.vocabulario) para eficiencia.
-        """
+    # *** CORRECCIÓN APLICADA AQUÍ ***
+    def _construir_vocabulario(self, lista_documentos): # <-- Renombrada para claridad
+        """Crea un vocabulario único a partir de los documentos."""
         palabras_unicas = set()
-        for doc in documentos:
-            # Tokenización simple: dividir por espacio y quitar puntuación
-            tokens = doc.lower().replace('.', '').replace(',', '').split()
+        
+        # Iteramos sobre la lista de documentos (incluso si solo hay uno)
+        for documento_unico in lista_documentos: 
+            # El objeto 'documento_unico' AHORA sí es la cadena de texto
+            tokens = documento_unico.lower().replace('.', '').replace(',', '').replace('\n', ' ').split()
             palabras_unicas.update(tokens)
             
-        # Asignamos un índice a cada palabra única
         for palabra in sorted(list(palabras_unicas)):
-            if palabra not in self.vocabulario:
+            if palabra and palabra not in self.vocabulario:
                 self.vocabulario[palabra] = self.siguiente_indice
                 self.palabras.append(palabra)
                 self.siguiente_indice += 1
                 
-    def construir_matriz_dispersa_dok(self, documentos):
+    # *** CORRECCIÓN APLICADA AQUÍ ***
+    def construir_matriz_dispersa_dok(self, lista_documentos): # <-- Renombrada para claridad
         """
-        Construye la Matriz Dispersa de Término-Documento.
-        
-        Esta es la 5. ESTRUCTURA DE MATRIZ DISPERSA.
-        
-        Usaremos la implementación "Dictionary of Keys" (DOK),
-        que es, en sí misma, un DICICONARIO.
-        
-        Las claves son tuplas (fila, columna) o (doc_id, palabra_id).
-        El valor es el conteo (frecuencia) de esa palabra en ese documento.
+        Construye la Matriz Dispersa de Término-Documento (N Filas x N Columnas).
         """
-        self._construir_vocabulario(documentos)
+        # La función _construir_vocabulario ahora acepta la lista de documentos
+        self._construir_vocabulario(lista_documentos)
         
-        # DOK: Dictionary of Keys
-        # Es un diccionario donde la clave es (fila, columna)
-        # y el valor es el dato en esa celda.
-        # Es ideal para construir la matriz.
         matriz_dispersa_dok = defaultdict(int)
         
-        for doc_id, doc in enumerate(documentos):
-            tokens = doc.lower().replace('.', '').replace(',', '').split()
+        for doc_id, doc in enumerate(lista_documentos): # <-- Iteramos correctamente sobre la lista
+            tokens = doc.lower().replace('.', '').replace(',', '').replace('\n', ' ').split()
+            
             for palabra in tokens:
                 if palabra in self.vocabulario:
                     palabra_id = self.vocabulario[palabra]
-                    
-                    # (fila, columna) = (doc_id, palabra_id)
-                    # Incrementamos el contador para esa celda
                     matriz_dispersa_dok[(doc_id, palabra_id)] += 1
                     
         return matriz_dispersa_dok
 
-    def imprimir_matriz(self, matriz_dok, documentos):
+    def obtener_top_frecuencias(self, matriz_dok, top_n=25):
         """
-        Una forma visual de 'ver' la matriz dispersa.
+        Convierte la matriz DOK en un diccionario de conteo y retorna las N más frecuentes.
         """
-        print("=" * 30)
-        print("MATRIZ DISPERSA TÉRMINO-DOCUMENTO")
-        print("=" * 30)
-        print(f"Dimensiones: {len(documentos)} Documentos x {len(self.vocabulario)} Palabras Únicas")
-        print("Representación 'Dictionary of Keys' (DOK):")
-        print("Formato: (ID_Documento, ID_Palabra): Conteo\n")
-        
-        for (doc_id, palabra_id), conteo in matriz_dok.items():
+        conteo_palabras = {}
+        # Asumimos que es un solo documento (doc_id=0) para fines de esta demo
+        for (doc_id, palabra_id), conteo in matriz_dok.items(): 
             palabra = self.palabras[palabra_id]
-            print(f"  (Doc {doc_id}, Palabra '{palabra}' (id:{palabra_id})): {conteo}")
+            conteo_palabras[palabra] = conteo
             
-        print("\nRepresentación 'Densa' (solo para visualización):")
+        top_frecuencias = sorted(conteo_palabras.items(), key=lambda item: item[1], reverse=True)[:top_n]
         
-        # Header (Palabras)
-        header = "          | " + " | ".join([f"{p[:5]:<5}" for p in self.palabras])
-        print(header)
-        print("-" * len(header))
-        
-        # Filas (Documentos)
-        for doc_id in range(len(documentos)):
-            fila_str = f"Doc {doc_id:<6} | "
-            for palabra_id in range(len(self.palabras)):
-                conteo = matriz_dok.get((doc_id, palabra_id), 0)
-                fila_str += f" {conteo:<5} | "
-            print(fila_str)
-        print("=" * 30)
+        return top_frecuencias
