@@ -1,5 +1,5 @@
-import huffman_compressor as hf
-import sparse_matrix_analyzer as sa
+from Logica import huffman_compressor as hf
+from Logica import sparse_matrix_analyzer as sa
 
 def demo_huffman():
     print("=" * 30)
